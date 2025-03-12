@@ -1,0 +1,188 @@
+{
+  "3": {
+    "inputs": {
+      "seed": 218705781476145,
+      "steps": 24,
+      "cfg": 7.7,
+      "sampler_name": "euler",
+      "scheduler": "karras",
+      "denoise": 1,
+      "model": [
+        "14",
+        0
+      ],
+      "positive": [
+        "10",
+        0
+      ],
+      "negative": [
+        "10",
+        1
+      ],
+      "latent_image": [
+        "10",
+        2
+      ]
+    },
+    "class_type": "KSampler",
+    "_meta": {
+      "title": "KSampler"
+    }
+  },
+  "8": {
+    "inputs": {
+      "samples": [
+        "3",
+        0
+      ],
+      "vae": [
+        "20",
+        2
+      ]
+    },
+    "class_type": "VAEDecode",
+    "_meta": {
+      "title": "VAE Decode"
+    }
+  },
+  "10": {
+    "inputs": {
+      "width": 576,
+      "height": 576,
+      "video_frames": 21,
+      "elevation": 0,
+      "clip_vision": [
+        "20",
+        1
+      ],
+      "init_image": [
+        "58",
+        0
+      ],
+      "vae": [
+        "20",
+        2
+      ]
+    },
+    "class_type": "SV3D_Conditioning",
+    "_meta": {
+      "title": "SV3D_Conditioning"
+    }
+  },
+  "14": {
+    "inputs": {
+      "min_cfg": 1,
+      "model": [
+        "20",
+        0
+      ]
+    },
+    "class_type": "VideoTriangleCFGGuidance",
+    "_meta": {
+      "title": "VideoTriangleCFGGuidance"
+    }
+  },
+  "20": {
+    "inputs": {
+      "ckpt_name": "sv3d_u.safetensors"
+    },
+    "class_type": "ImageOnlyCheckpointLoader",
+    "_meta": {
+      "title": "Image Only Checkpoint Loader (img2vid model)"
+    }
+  },
+  "22": {
+    "inputs": {
+      "ckpt_name": "rife47.pth",
+      "clear_cache_after_n_frames": 10,
+      "multiplier": 2,
+      "fast_mode": true,
+      "ensemble": true,
+      "scale_factor": 1,
+      "frames": [
+        "8",
+        0
+      ]
+    },
+    "class_type": "RIFE VFI",
+    "_meta": {
+      "title": "RIFE VFI (recommend rife47 and rife49)"
+    }
+  },
+  "24": {
+    "inputs": {
+      "frame_rate": 21,
+      "loop_count": 0,
+      "filename_prefix": "AnimateDiff",
+      "format": "video/h264-mp4",
+      "pix_fmt": "yuv420p",
+      "crf": 19,
+      "save_metadata": true,
+      "pingpong": false,
+      "save_output": true,
+      "images": [
+        "22",
+        0
+      ]
+    },
+    "class_type": "VHS_VideoCombine",
+    "_meta": {
+      "title": "Video Combine  - Final🎥🅥🅗🅢"
+    }
+  },
+  "25": {
+    "inputs": {
+      "images": [
+        "8",
+        0
+      ]
+    },
+    "class_type": "PreviewImage",
+    "_meta": {
+      "title": "Preview Image"
+    }
+  },
+  "26": {
+    "inputs": {
+      "frame_rate": 21,
+      "loop_count": 0,
+      "filename_prefix": "AnimateDiff",
+      "format": "video/h264-mp4",
+      "pix_fmt": "yuv420p",
+      "crf": 19,
+      "save_metadata": true,
+      "pingpong": false,
+      "save_output": true,
+      "images": [
+        "8",
+        0
+      ]
+    },
+    "class_type": "VHS_VideoCombine",
+    "_meta": {
+      "title": "Video Combine 🎥🅥🅗🅢"
+    }
+  },
+  "57": {
+    "inputs": {
+      "options": "Intermediate",
+      "filenames": [
+        "24",
+        0
+      ]
+    },
+    "class_type": "VHS_PruneOutputs",
+    "_meta": {
+      "title": "Prune Outputs 🎥🅥🅗🅢"
+    }
+  },
+  "58": {
+    "inputs": {
+      "image": ""
+    },
+    "class_type": "ETN_LoadImageBase64",
+    "_meta": {
+      "title": "Load Image (Base64)"
+    }
+  }
+}
