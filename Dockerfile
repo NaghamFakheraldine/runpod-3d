@@ -18,6 +18,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libxrender1 \
     libxext6 \
     build-essential \
+    ffmpeg \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
@@ -52,8 +53,13 @@ RUN pip install --no-cache-dir runpod boto3 requests huggingface_hub pillow
 RUN git clone https://github.com/Fannovel16/ComfyUI-Frame-Interpolation.git /workspace/ComfyUI/custom_nodes/ComfyUI-Frame-Interpolation
 
 # Install custom nodes with error handling and proper cleanup to save space
-RUN git clone https://github.com/Kosinkadink/ComfyUI-VideoHelperSuite.git /workspace/ComfyUI/custom_nodes/ComfyUI-VideoHelperSuite || echo "Failed to clone ComfyUI-VideoHelperSuite, continuing anyway" && \
-    git clone https://github.com/Acly/comfyui-tooling-nodes /workspace/ComfyUI/custom_nodes/comfyui-tooling-nodes || echo "Failed to clone tooling-nodes, continuing anyway"
+RUN cd /workspace/ComfyUI/custom_nodes && \
+    git clone https://github.com/Kosinkadink/ComfyUI-VideoHelperSuite.git && \
+    cd ComfyUI-VideoHelperSuite && \
+    pip install -r requirements.txt || echo "Failed to install VideoHelperSuite requirements, continuing anyway" && \
+    cd .. && \
+    git clone https://github.com/Fannovel16/ComfyUI-Frame-Interpolation.git && \
+    git clone https://github.com/Acly/comfyui-tooling-nodes
 
 # Clean up git repos to save space
 RUN find /workspace -name ".git" -type d -exec rm -rf {} + 2>/dev/null || true
