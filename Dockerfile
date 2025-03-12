@@ -50,15 +50,22 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Install additional requirements
 RUN pip install --no-cache-dir runpod boto3 requests huggingface_hub pillow
 
-RUN git clone https://github.com/Fannovel16/ComfyUI-Frame-Interpolation.git /workspace/ComfyUI/custom_nodes/ComfyUI-Frame-Interpolation
-
 # Install custom nodes with error handling and proper cleanup to save space
 RUN cd /workspace/ComfyUI/custom_nodes && \
+    # Clone VideoHelperSuite
+    rm -rf ComfyUI-VideoHelperSuite && \
     git clone https://github.com/Kosinkadink/ComfyUI-VideoHelperSuite.git && \
     cd ComfyUI-VideoHelperSuite && \
     pip install -r requirements.txt || echo "Failed to install VideoHelperSuite requirements, continuing anyway" && \
     cd .. && \
+    # Clone Frame Interpolation
+    rm -rf ComfyUI-Frame-Interpolation && \
     git clone https://github.com/Fannovel16/ComfyUI-Frame-Interpolation.git && \
+    cd ComfyUI-Frame-Interpolation && \
+    pip install -r requirements.txt || echo "Failed to install Frame Interpolation requirements, continuing anyway" && \
+    cd .. && \
+    # Clone Tooling Nodes
+    rm -rf comfyui-tooling-nodes && \
     git clone https://github.com/Acly/comfyui-tooling-nodes
 
 # Clean up git repos to save space
