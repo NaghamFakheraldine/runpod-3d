@@ -76,25 +76,16 @@ def wait_for_comfyui():
     raise Exception(f"ComfyUI server failed to start after {MAX_STARTUP_RETRIES * STARTUP_RETRY_INTERVAL} seconds")
 
 # Process the workflow
-def process_workflow(workflow_data, prompt=""):
+def process_workflow(workflow_data):
     logger.info("Processing workflow...")
     
-    # Update the prompt in the workflow if provided
-    if prompt:
-        if "39" in workflow_data:
-            bged_prompt = f"bged {prompt}"  # Prepend 'bged' to the prompt
-            logger.info(f"Setting prompt in node 39: {bged_prompt}")
-            workflow_data["39"]["inputs"]["text"] = bged_prompt
-        else:
-            logger.warning("Node 39 not found in workflow, prompt will not be applied")
-    
-    # Queue the prompt
-    prompt_api = f"http://127.0.0.1:{COMFYUI_PORT}/prompt"
+    # Queue the workflow
+    api_endpoint = f"http://127.0.0.1:{COMFYUI_PORT}/prompt"
     
     try:
-        logger.info("Sending prompt to ComfyUI...")
+        logger.info("Sending workflow to ComfyUI...")
         response = requests.post(
-            prompt_api,
+            api_endpoint,
             json={
                 "prompt": workflow_data,
                 "extra_data": {
@@ -107,14 +98,14 @@ def process_workflow(workflow_data, prompt=""):
         )
         
         if response.status_code != 200:
-            error_msg = f"Failed to queue prompt: {response.text}"
+            error_msg = f"Failed to queue workflow: {response.text}"
             logger.error(error_msg)
             raise Exception(error_msg)
         
-        prompt_id = response.json()["prompt_id"]
-        logger.info(f"Prompt queued with ID: {prompt_id}")
+        execution_id = response.json()["prompt_id"]
+        logger.info(f"Workflow queued with ID: {execution_id}")
     except requests.exceptions.RequestException as e:
-        error_msg = f"Error sending prompt to ComfyUI: {str(e)}"
+        error_msg = f"Error sending workflow to ComfyUI: {str(e)}"
         logger.error(error_msg)
         raise Exception(error_msg)
     
@@ -126,51 +117,52 @@ def process_workflow(workflow_data, prompt=""):
             response = requests.get(f"http://127.0.0.1:{COMFYUI_PORT}/history", timeout=10)
             history = response.json()
             
-            if prompt_id in history:
-                prompt_data = history[prompt_id]
+            if execution_id in history:
+                execution_data = history[execution_id]
                 
                 # Check if processing is complete
-                if "outputs" in prompt_data and prompt_data.get("status", {}).get("status") == "success":
+                if "outputs" in execution_data and execution_data.get("status", {}).get("status") == "success":
                     logger.info("Workflow processing completed successfully")
                     
-                    # Find the output image (node 113)
-                    for node_id, node_output in prompt_data["outputs"].items():
-                        if node_id == "113" and node_output.get("images"):
-                            image_data = node_output["images"][0]
-                            image_path = f"/workspace/ComfyUI/output/{image_data['filename']}"
-                            logger.info(f"Found output image: {image_path}")
-                            
-                            # Return base64 encoded image
-                            try:
-                                with open(image_path, "rb") as img_file:
-                                    img_base64 = base64.b64encode(img_file.read()).decode("utf-8")
+                    # Find the output video (node 24)
+                    for node_id, node_output in execution_data["outputs"].items():
+                        if node_id == "24":
+                            if "videos" in node_output:
+                                video_data = node_output["videos"][0]
+                                video_path = f"/workspace/ComfyUI/output/{video_data['filename']}"
+                                logger.info(f"Found output video: {video_path}")
                                 
-                                return {
-                                    "status": "success",
-                                    "image": img_base64,
-                                    "prompt_id": prompt_id
-                                }
-                            except Exception as e:
-                                error_msg = f"Error reading output image: {str(e)}"
-                                logger.error(error_msg)
-                                return {"status": "error", "message": error_msg}
+                                # Return base64 encoded video
+                                try:
+                                    with open(video_path, "rb") as video_file:
+                                        video_base64 = base64.b64encode(video_file.read()).decode("utf-8")
+                                    
+                                    return {
+                                        "status": "success",
+                                        "video": video_base64,
+                                        "execution_id": execution_id
+                                    }
+                                except Exception as e:
+                                    error_msg = f"Error reading output video: {str(e)}"
+                                    logger.error(error_msg)
+                                    return {"status": "error", "message": error_msg}
                     
-                    # If we get here, the prompt completed but we couldn't find the image
-                    error_msg = "No output image found in results"
+                    # If we get here, the workflow completed but we couldn't find the video
+                    error_msg = "No output video found in results"
                     logger.error(error_msg)
                     return {"status": "error", "message": error_msg}
                 
                 # Check if there was an error
-                if prompt_data.get("status", {}).get("status") == "error":
-                    error_msg = prompt_data.get("status", {}).get("message", "Unknown error in workflow processing")
+                if execution_data.get("status", {}).get("status") == "error":
+                    error_msg = execution_data.get("status", {}).get("message", "Unknown error in workflow processing")
                     logger.error(f"Workflow processing failed: {error_msg}")
                     return {"status": "error", "message": error_msg}
                 
                 # Still processing
-                status = prompt_data.get("status", {}).get("status", "unknown")
+                status = execution_data.get("status", {}).get("status", "unknown")
                 logger.info(f"Still processing (status: {status}), retrying... ({retry+1}/{MAX_PROCESSING_RETRIES})")
             else:
-                logger.info(f"Prompt ID not found in history yet, retrying... ({retry+1}/{MAX_PROCESSING_RETRIES})")
+                logger.info(f"Execution ID not found in history yet, retrying... ({retry+1}/{MAX_PROCESSING_RETRIES})")
         
         except Exception as e:
             logger.warning(f"Error checking workflow status: {str(e)}")
@@ -186,9 +178,9 @@ def handler(event):
     try:
         logger.info(f"Received event: {json.dumps(event.get('input', {}))[:1000]}...")
         
-        # Get the workflow from the input
+        # Get the workflow and image from the input
         workflow_data = event.get("input", {}).get("workflow")
-        prompt = event.get("input", {}).get("prompt", "")
+        input_image = event.get("input", {}).get("image", "")
         
         # If workflow is not provided, use the default one
         if not workflow_data:
@@ -201,8 +193,22 @@ def handler(event):
                 logger.error(error_msg)
                 return {"status": "error", "message": error_msg}
         
+        # Set the input image in the workflow
+        if input_image:
+            if "58" in workflow_data:
+                logger.info("Setting input image in node 58")
+                workflow_data["58"]["inputs"]["image"] = input_image
+            else:
+                error_msg = "Node 58 (ETN_LoadImageBase64) not found in workflow"
+                logger.error(error_msg)
+                return {"status": "error", "message": error_msg}
+        else:
+            error_msg = "No input image provided"
+            logger.error(error_msg)
+            return {"status": "error", "message": error_msg}
+        
         # Process the workflow
-        result = process_workflow(workflow_data, prompt)
+        result = process_workflow(workflow_data)
         logger.info(f"Processing completed with status: {result.get('status')}")
         return result
     
