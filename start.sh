@@ -20,15 +20,16 @@ mkdir -p /workspace/ComfyUI/output
 echo "Checking available disk space..."
 df -h /workspace
 
-# Download sv3d_u checkpoint with disk space check
-if [ ! -f "/workspace/ComfyUI/models/checkpoints/sv3d_u.safetensors" ]; then
-    echo "Model file not found, initiating download process..."
+# Download sv3d_u checkpoint with disk space check and verification
+MODEL_PATH="/workspace/ComfyUI/models/checkpoints/sv3d_u.safetensors"
+if [ ! -f "$MODEL_PATH" ] || [ ! -s "$MODEL_PATH" ]; then
+    echo "Model file not found or empty, initiating download process..."
     # Check if we have at least 6GB free
     FREE_SPACE=$(df -k /workspace | awk 'NR==2 {print $4}')
     echo "Available space: ${FREE_SPACE}KB"
     if [ "$FREE_SPACE" -lt 6000000 ]; then
-        echo "Warning: Not enough disk space to download sv3d_u checkpoint (need at least 6GB)."
-        echo "The service may not work properly. Consider increasing disk space allocation."
+        echo "Error: Not enough disk space to download sv3d_u checkpoint (need at least 6GB)."
+        exit 1
     else
         echo "Downloading sv3d_u checkpoint..."
         if [ -z "$HF_TOKEN" ]; then
@@ -37,26 +38,31 @@ if [ ! -f "/workspace/ComfyUI/models/checkpoints/sv3d_u.safetensors" ]; then
             exit 1
         else
             echo "HF_TOKEN is set, proceeding with download..."
-            wget --tries=3 --timeout=60 -O /workspace/ComfyUI/models/checkpoints/sv3d_u.safetensors \
+            rm -f "$MODEL_PATH"  # Remove any existing incomplete file
+            wget --tries=3 --timeout=60 -O "$MODEL_PATH" \
                 --header="Authorization: Bearer ${HF_TOKEN}" \
-                https://huggingface.co/stabilityai/sv3d/resolve/main/sv3d_u.safetensors || 
-            echo "Warning: Failed to download sv3d_u checkpoint. The service may not work properly."
+                https://huggingface.co/stabilityai/sv3d/resolve/main/sv3d_u.safetensors
+            
+            # Verify download
+            if [ ! -f "$MODEL_PATH" ] || [ ! -s "$MODEL_PATH" ]; then
+                echo "Error: Failed to download model or file is empty"
+                exit 1
+            fi
+            
+            # Check file size (should be around 5GB)
+            FILE_SIZE=$(stat -f%z "$MODEL_PATH" 2>/dev/null || stat -c%s "$MODEL_PATH")
+            if [ "$FILE_SIZE" -lt 5000000000 ]; then  # 5GB in bytes
+                echo "Error: Downloaded model file is too small, might be corrupted"
+                rm -f "$MODEL_PATH"
+                exit 1
+            fi
+            echo "Model downloaded successfully. Size: $(numfmt --to=iec-i --suffix=B $FILE_SIZE)"
         fi
     fi
 else
-    echo "Model file already exists at /workspace/ComfyUI/models/checkpoints/sv3d_u.safetensors"
-    ls -l /workspace/ComfyUI/models/checkpoints/sv3d_u.safetensors
-fi
-
-# Verify the model file exists and has content
-if [ -f "/workspace/ComfyUI/models/checkpoints/sv3d_u.safetensors" ]; then
-    FILE_SIZE=$(stat -f%z "/workspace/ComfyUI/models/checkpoints/sv3d_u.safetensors" 2>/dev/null || stat -c%s "/workspace/ComfyUI/models/checkpoints/sv3d_u.safetensors")
-    echo "Model file size: ${FILE_SIZE} bytes"
-    if [ "$FILE_SIZE" -lt 1000000 ]; then
-        echo "Warning: Model file exists but seems too small. May be corrupted or incomplete."
-    fi
-else
-    echo "Error: Model file not found after download attempt!"
+    echo "Model file exists at $MODEL_PATH"
+    FILE_SIZE=$(stat -f%z "$MODEL_PATH" 2>/dev/null || stat -c%s "$MODEL_PATH")
+    echo "Model file size: $(numfmt --to=iec-i --suffix=B $FILE_SIZE)"
 fi
 
 # Manage workflow.json
@@ -76,6 +82,3 @@ df -h /workspace
 # Start the RunPod handler
 echo "Starting RunPod handler..."
 python3 -u /workspace/handler.py
-
-# Verify the downloaded file
-ls -l /workspace/ComfyUI/models/checkpoints/sv3d_u.safetensors

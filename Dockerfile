@@ -36,7 +36,7 @@ WORKDIR /workspace
 RUN git clone https://github.com/comfyanonymous/ComfyUI
 
 # Install PyTorch first to avoid dependency conflicts
-RUN pip install --no-cache-dir torch torchvision --index-url https://download.pytorch.org/whl/cu121
+RUN pip install --no-cache-dir torch==2.1.2 torchvision==0.16.2 torchaudio==2.1.2 --index-url https://download.pytorch.org/whl/cu121
 
 # Create all required directories BEFORE installing dependencies
 RUN mkdir -p /workspace/ComfyUI/models/checkpoints \
