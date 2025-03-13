@@ -34,14 +34,24 @@ ENV PATH="/opt/venv/bin:$PATH"
 # Upgrade pip
 RUN pip install --no-cache-dir --upgrade pip setuptools wheel
 
+# Install NumPy first
+RUN pip install --no-cache-dir numpy==1.24.3
+
 # Create workspace directory
 WORKDIR /workspace
 
 # Clone ComfyUI repo
 RUN git clone https://github.com/comfyanonymous/ComfyUI
 
-# Install PyTorch first to avoid dependency conflicts
-RUN pip install --no-cache-dir torch==2.1.2 torchvision==0.16.2 torchaudio==2.1.2 --index-url https://download.pytorch.org/whl/cu121
+# Install PyTorch and related packages with specific CUDA versions
+RUN pip install --no-cache-dir \
+    torch==2.1.2 \
+    torchvision==0.16.2 \
+    --index-url https://download.pytorch.org/whl/cu121 && \
+    pip install --no-cache-dir torchaudio==2.1.2 --index-url https://download.pytorch.org/whl/cu121
+
+# Install FFmpeg-related packages
+RUN pip install --no-cache-dir imageio-ffmpeg==0.4.9
 
 # Create all required directories BEFORE installing dependencies
 RUN mkdir -p /workspace/ComfyUI/models/checkpoints \

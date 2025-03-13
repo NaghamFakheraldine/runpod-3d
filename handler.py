@@ -27,10 +27,48 @@ MAX_PROCESSING_RETRIES = 600
 PROCESSING_RETRY_INTERVAL = 2
 REQUEST_TIMEOUT = 60
 
+# Check required dependencies
+def check_dependencies():
+    try:
+        import numpy
+        logger.info(f"NumPy version: {numpy.__version__}")
+        
+        import torch
+        logger.info(f"PyTorch version: {torch.__version__}")
+        logger.info(f"CUDA available: {torch.cuda.is_available()}")
+        if torch.cuda.is_available():
+            logger.info(f"CUDA version: {torch.version.cuda}")
+        
+        import torchaudio
+        logger.info(f"TorchAudio version: {torchaudio.__version__}")
+        
+        # Check FFmpeg
+        try:
+            import imageio_ffmpeg
+            logger.info(f"imageio-ffmpeg version: {imageio_ffmpeg.__version__}")
+            ffmpeg_path = imageio_ffmpeg.get_ffmpeg_exe()
+            logger.info(f"FFmpeg path: {ffmpeg_path}")
+        except ImportError:
+            logger.error("imageio-ffmpeg is not installed!")
+            raise
+        except Exception as e:
+            logger.error(f"Error checking FFmpeg: {str(e)}")
+            raise
+            
+    except ImportError as e:
+        logger.error(f"Missing required dependency: {str(e)}")
+        raise
+    except Exception as e:
+        logger.error(f"Error checking dependencies: {str(e)}")
+        raise
+
 # Start ComfyUI as a background process
 def start_comfyui():
     logger.info("Starting ComfyUI server...")
     try:
+        # Check dependencies first
+        check_dependencies()
+        
         process = subprocess.Popen(
             ["python", "main.py", "--listen", "0.0.0.0", "--port", str(COMFYUI_PORT), "--cuda-device", "0"],
             cwd="/workspace/ComfyUI",
