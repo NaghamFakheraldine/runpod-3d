@@ -19,8 +19,13 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libxext6 \
     build-essential \
     ffmpeg \
+    libavcodec-extra \
+    libavformat-dev \
+    libavutil-dev \
+    libswscale-dev \
     && apt-get clean \
-    && rm -rf /var/lib/apt/lists/*
+    && rm -rf /var/lib/apt/lists/* \
+    && which ffmpeg || (echo "FFmpeg not found" && exit 1)
 
 # Create virtual environment
 RUN python3 -m venv /opt/venv

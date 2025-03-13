@@ -21,10 +21,11 @@ logger = logging.getLogger("comfyui-handler")
 
 # Configuration
 COMFYUI_PORT = 8188
-MAX_STARTUP_RETRIES = 60
+MAX_STARTUP_RETRIES = 120
 STARTUP_RETRY_INTERVAL = 5
-MAX_PROCESSING_RETRIES = 300
+MAX_PROCESSING_RETRIES = 600
 PROCESSING_RETRY_INTERVAL = 2
+REQUEST_TIMEOUT = 60
 
 # Start ComfyUI as a background process
 def start_comfyui():
@@ -60,7 +61,7 @@ def wait_for_comfyui():
     
     for retry in range(MAX_STARTUP_RETRIES):
         try:
-            response = requests.get(f"http://127.0.0.1:{COMFYUI_PORT}/system_stats")
+            response = requests.get(f"http://127.0.0.1:{COMFYUI_PORT}/system_stats", timeout=REQUEST_TIMEOUT)
             if response.status_code == 200:
                 logger.info("ComfyUI server is ready!")
                 return True
@@ -68,6 +69,8 @@ def wait_for_comfyui():
                 logger.warning(f"ComfyUI returned status code {response.status_code}, retrying...")
         except requests.exceptions.ConnectionError:
             logger.info(f"Waiting for ComfyUI to start (attempt {retry+1}/{MAX_STARTUP_RETRIES})...")
+        except requests.exceptions.Timeout:
+            logger.warning(f"Timeout while checking ComfyUI status (attempt {retry+1}/{MAX_STARTUP_RETRIES})")
         except Exception as e:
             logger.warning(f"Error checking ComfyUI status: {str(e)}")
         
